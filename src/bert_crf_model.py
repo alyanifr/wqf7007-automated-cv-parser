@@ -33,7 +33,10 @@ class BertCRFForNER(nn.Module):
 
         if labels is not None:
             # CRF mask
-            mask = (labels != -100) & attention_mask.bool()
+            mask = (labels != -100)
+            
+            if attention_mask is not None:
+                mask = mask & attention_mask.bool()
 
             # CRF cannot accept -100 labels, so replace ignore labels with 0
             labels_for_crf = labels.clone()
@@ -51,6 +54,7 @@ class BertCRFForNER(nn.Module):
     
     def decode(self, input_ids, attention_mask=None, token_type_ids=None, labels=None):
         """Use during inference."""
+        
         self.eval()
 
         model_inputs = {
@@ -67,9 +71,15 @@ class BertCRFForNER(nn.Module):
         emissions = self.classifier(sequence_output)
 
         if labels is not None:
-            mask = (labels != -100) & attention_mask.bool()
+            mask = (labels != -100) 
+            
+            if attention_mask is not None:
+                mask = mask & attention_mask.bool()
         else:
-            mask = attention_mask.bool()
+            if attention_mask is not None:
+                mask = attention_mask.bool()
+            else:
+                mask = torch.ones_like(input_ids).bool()
 
         decoded = self.crf.decode(emissions=emissions, mask=mask)       # best valid sequence across tokens
 
